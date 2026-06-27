@@ -13,7 +13,6 @@ Die App nutzt Wetterdaten von [Bright Sky](https://brightsky.dev/) und laeuft ko
 - Niederschlagsradar mit Vollbildmodus
 - Lokale und deutschlandweite DWD-Warnungen
 - Progressive Web App mit Manifest, Service Worker und App-Icons
-- Deployment ueber GitHub Pages per GitHub Actions
 
 ## Voraussetzungen
 
@@ -53,29 +52,6 @@ Fuer einen Release-Build:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\build-pwa.ps1 -Release
-```
-
-## GitHub Pages
-
-Das Repository enthaelt den Workflow `.github/workflows/pages.yml`.
-
-Die fertige GitHub-Page liegt im Ordner `docs/`. Dadurch kann GitHub Pages ohne langen Rust-/Dioxus-Build direkt veroeffentlichen.
-
-Zum Aktualisieren der GitHub Page:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\update-pages.ps1
-git add .
-git commit -m "Update GitHub Pages build"
-git push
-```
-
-Bei jedem Push auf `main` veroeffentlicht GitHub Actions den Inhalt aus `docs/`.
-
-Die Page ist nach erfolgreichem Workflow typischerweise unter dieser Adresse erreichbar:
-
-```text
-https://<github-benutzername>.github.io/<repository-name>/
 ```
 
 ## Datenquellen
