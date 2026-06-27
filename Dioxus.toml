@@ -1,0 +1,9 @@
+[application]
+asset_dir = "assets"
+
+[web.app]
+title = "Live Wetter"
+
+[web.watcher]
+watch_path = ["src", "assets", "pwa", "index.html"]
+reload_html = true

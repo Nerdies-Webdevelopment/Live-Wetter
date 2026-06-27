@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Bright Sky Radar</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v7.5.1/ol.css">
+  <script src="https://cdn.jsdelivr.net/npm/ol@v7.5.1/dist/ol.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.min.js"></script>
+  <script src="https://unpkg.com/pako@2.1.0/dist/pako.min.js"></script>
+  <style>
+    html,
+    body,
+    #map {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      font-family: "Segoe UI", Arial, "Helvetica Neue", sans-serif;
+      background: #d9e5e1;
+    }
+
+    #map.loading::after {
+      content: "Radar wird geladen...";
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: rgba(238, 243, 240, 0.82);
+      color: #17352a;
+      font-weight: 700;
+      z-index: 4;
+    }
+
+    .map-fullscreen {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 3;
+      min-height: 38px;
+      padding: 0 13px;
+      border: 1px solid rgba(255, 255, 255, 0.38);
+      border-radius: 999px;
+      background: #143d31;
+      color: #fff;
+      box-shadow: 0 8px 22px rgba(13, 35, 27, 0.22);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 800;
+    }
+
+    .frame-selector {
+      left: 12px;
+      bottom: 12px;
+      display: none;
+      width: min(360px, calc(100% - 24px));
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(12, 25, 21, 0.82);
+      color: #fff;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+    }
+
+    :fullscreen .frame-selector {
+      display: block;
+    }
+
+    .map-hud,
+    .map-legend {
+      display: none;
+      position: absolute;
+      z-index: 3;
+      border-radius: 8px;
+      background: rgba(12, 25, 21, 0.82);
+      color: #fff;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+    }
+
+    .map-hud {
+      left: 56px;
+      top: 12px;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+    }
+
+    .map-time {
+      font-size: 0.94rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .map-reset {
+      min-height: 32px;
+      padding: 0 11px;
+      border: 0;
+      border-radius: 999px;
+      background: #e8f0ed;
+      color: #17352a;
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.86rem;
+      font-weight: 800;
+    }
+
+    .map-legend {
+      right: 12px;
+      bottom: 28px;
+      width: min(330px, calc(100% - 24px));
+      padding: 10px 12px;
+    }
+
+    .legend-title {
+      margin-bottom: 8px;
+      font-size: 0.86rem;
+      font-weight: 800;
+    }
+
+    .legend-ramp {
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(185, 219, 230, 0.95), rgba(98, 168, 211, 0.95), rgba(47, 129, 189, 0.95), rgba(46, 143, 118, 0.95), rgba(224, 185, 63, 0.95), rgba(217, 109, 58, 0.95), rgba(185, 53, 45, 0.95));
+    }
+
+    .legend-labels {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 7px;
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 0.76rem;
+    }
+
+    :fullscreen .map-hud {
+      display: flex;
+    }
+
+    :fullscreen .map-legend {
+      display: block;
+    }
+
+    .frame-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 7px;
+    }
+
+    .frame-selector h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .frame-selector button {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #17352a;
+      background: #e8f0ed;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 900;
+    }
+
+    .frame-selector input {
+      width: 100%;
+      accent-color: #5ad0b2;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="map" class="loading"></div>
+  <button class="map-fullscreen" type="button" title="Deutschlandkarte im Vollbild öffnen">Vollbild</button>
+  <div class="map-hud">
+    <div class="map-time">Radarbild: --:-- Uhr</div>
+    <button class="map-reset" type="button" title="Deutschland anzeigen">Deutschland</button>
+  </div>
+  <div class="map-legend" aria-label="Niederschlagsintensität">
+    <div class="legend-title">Niederschlag in 5 Minuten</div>
+    <div class="legend-ramp"></div>
+    <div class="legend-labels">
+      <span>leicht</span>
+      <span>mäßig</span>
+      <span>stark</span>
+      <span>extrem</span>
+    </div>
+  </div>
+  <script>
+    const selectedLat = Number("__RADAR_LAT__") || 51.16;
+    const selectedLon = Number("__RADAR_LON__") || 10.45;
+    const startsGermany = "__RADAR_GERMANY__" === "true";
+
+    class FrameControl extends ol.control.Control {
+      constructor(layer) {
+        const label = document.createElement("h3");
+        const toggle = document.createElement("button");
+        const slider = document.createElement("input");
+        const top = document.createElement("div");
+        const element = document.createElement("div");
+
+        toggle.type = "button";
+        toggle.textContent = "II";
+        toggle.title = "Animation pausieren";
+        slider.type = "range";
+        top.className = "frame-top";
+        top.appendChild(label);
+        top.appendChild(toggle);
+        element.className = "frame-selector ol-unselectable ol-control";
+        element.appendChild(top);
+        element.appendChild(slider);
+
+        super({element});
+        this.layer = layer;
+        this.frames = [];
+        this.label = label;
+        this.toggle = toggle;
+        this.slider = slider;
+        this.autoplay = null;
+
+        slider.addEventListener("input", () => {
+          this.stopAutoplay();
+          this.setFrame(Number(slider.value));
+        });
+        toggle.addEventListener("click", () => this.toggleAutoplay());
+      }
+
+      setFrames(frames) {
+        this.frames = frames;
+        this.slider.min = 0;
+        this.slider.max = Math.max(frames.length - 1, 0);
+        this.slider.value = this.slider.max;
+        this.setFrame(Number(this.slider.value));
+      }
+
+      setFrame(idx) {
+        const frame = this.frames[idx];
+        if (!frame) return;
+        this.label.textContent = frame.label;
+        updateRadarTime(frame.label);
+        this.layer.setSource(frame.source);
+      }
+
+      nextFrame() {
+        if (Number(this.slider.value) >= Number(this.slider.max)) {
+          this.slider.value = 0;
+        } else {
+          this.slider.stepUp();
+        }
+        this.setFrame(Number(this.slider.value));
+      }
+
+      startAutoplay() {
+        if (this.autoplay !== null) return;
+        this.autoplay = setInterval(() => this.nextFrame(), 650);
+        this.toggle.textContent = "II";
+        this.toggle.title = "Animation pausieren";
+      }
+
+      stopAutoplay() {
+        clearInterval(this.autoplay);
+        this.autoplay = null;
+        this.toggle.textContent = ">";
+        this.toggle.title = "Animation starten";
+      }
+
+      toggleAutoplay() {
+        if (this.autoplay === null) {
+          this.startAutoplay();
+        } else {
+          this.stopAutoplay();
+        }
+      }
+    }
+
+    function decompress(raw) {
+      const compressed = Uint8Array.from(atob(raw), char => char.charCodeAt(0));
+      return new Uint16Array(pako.inflate(compressed).buffer);
+    }
+
+    function precipitationToRgba(precip) {
+      if (precip === 0) return [0, 0, 0, 0];
+      if (precip < 5) return [185, 219, 230, 95];
+      if (precip < 15) return [98, 168, 211, 135];
+      if (precip < 40) return [47, 129, 189, 170];
+      if (precip < 80) return [46, 143, 118, 190];
+      if (precip < 150) return [224, 185, 63, 210];
+      if (precip < 300) return [217, 109, 58, 230];
+      return [185, 53, 45, 242];
+    }
+
+    function makeSource(record) {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = gridWidth;
+      canvas.height = gridHeight;
+      const imageData = ctx.createImageData(gridWidth, gridHeight);
+
+      for (const [idx, precip] of decompress(record.precipitation_5).entries()) {
+        const rgba = precipitationToRgba(precip);
+        imageData.data[idx * 4] = rgba[0];
+        imageData.data[idx * 4 + 1] = rgba[1];
+        imageData.data[idx * 4 + 2] = rgba[2];
+        imageData.data[idx * 4 + 3] = rgba[3];
+      }
+
+      ctx.putImageData(imageData, 0, 0);
+      return {
+        label: new Date(record.timestamp).toLocaleTimeString("de-DE", {hour: "2-digit", minute: "2-digit"}),
+        source: new ol.source.ImageStatic({
+          url: canvas.toDataURL(),
+          projection: gridProjection,
+          imageExtent: gridExtent,
+          interpolate: false,
+          attributions: "Radar: Bright Sky / DWD"
+        })
+      };
+    }
+
+    const gridWidth = 1100;
+    const gridHeight = 1200;
+    const gridProjection = "DE1200";
+    const gridProjStr = "+proj=stere +lat_0=90 +lat_ts=60 +lon_0=10 +a=6378137 +b=6356752.3142451802 +no_defs +x_0=543196.83521776402 +y_0=3622588.8619310018";
+    const gridExtent = [-500, -1199500, 1099500, 500];
+
+    proj4.defs(gridProjection, gridProjStr);
+    ol.proj.proj4.register(proj4);
+
+    const imageLayer = new ol.layer.Image();
+    const frameControl = new FrameControl(imageLayer);
+    const germanyCenter = ol.proj.fromLonLat([10.45, 51.15]);
+
+    const map = new ol.Map({
+      target: "map",
+      layers: [
+        new ol.layer.Tile({source: new ol.source.OSM()}),
+        imageLayer
+      ],
+      view: new ol.View({
+        center: ol.proj.fromLonLat([selectedLon, selectedLat]),
+        zoom: 7
+      }),
+      controls: ol.control.defaults.defaults().extend([frameControl])
+    });
+    const fullscreenButton = document.querySelector(".map-fullscreen");
+    const germanyButton = document.querySelector(".map-reset");
+    const radarTime = document.querySelector(".map-time");
+
+    function updateRadarTime(label) {
+      radarTime.textContent = `Radarbild: ${label} Uhr`;
+    }
+
+    function fitPlace() {
+      map.getView().animate({
+        center: ol.proj.fromLonLat([selectedLon, selectedLat]),
+        zoom: 7,
+        duration: 180
+      });
+    }
+
+    function fitGermany() {
+      map.getView().animate({
+        center: germanyCenter,
+        zoom: 6.65,
+        duration: 180
+      });
+    }
+
+    function refreshMapSize() {
+      setTimeout(() => {
+        map.updateSize();
+        if (document.fullscreenElement) {
+          fitGermany();
+          fullscreenButton.textContent = "Schließen";
+          fullscreenButton.title = "Vollbild schließen";
+        } else {
+          fitPlace();
+          fullscreenButton.textContent = "Vollbild";
+          fullscreenButton.title = "Deutschlandkarte im Vollbild öffnen";
+        }
+      }, 120);
+    }
+
+    fullscreenButton.addEventListener("click", async () => {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+    });
+
+    germanyButton.addEventListener("click", () => fitGermany());
+
+    document.addEventListener("fullscreenchange", refreshMapSize);
+
+    setTimeout(() => {
+      map.updateSize();
+      if (startsGermany) fitGermany();
+    }, 120);
+
+    fetch("https://api.brightsky.dev/radar?tz=Europe%2FBerlin")
+      .then(response => response.json())
+      .then(data => {
+        frameControl.setFrames(data.radar.map(makeSource));
+        frameControl.startAutoplay();
+        map.getTargetElement().classList.remove("loading");
+        if (startsGermany) fitGermany();
+      })
+      .catch(() => {
+        map.getTargetElement().classList.remove("loading");
+      });
+  </script>
+</body>
+</html>
