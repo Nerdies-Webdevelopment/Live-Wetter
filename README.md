@@ -59,13 +59,18 @@ powershell -ExecutionPolicy Bypass -File .\build-pwa.ps1 -Release
 
 Das Repository enthaelt den Workflow `.github/workflows/pages.yml`.
 
-Bei jedem Push auf `main` wird:
+Die fertige GitHub-Page liegt im Ordner `docs/`. Dadurch kann GitHub Pages ohne langen Rust-/Dioxus-Build direkt veroeffentlichen.
 
-1. Rust mit `wasm32-unknown-unknown` installiert.
-2. Dioxus CLI 0.7.3 installiert.
-3. Die Web-App als Release gebaut.
-4. Die PWA-Dateien in den Build kopiert.
-5. Der Inhalt aus `target/dx/nerdies_weather/release/web/public` als GitHub Page veroeffentlicht.
+Zum Aktualisieren der GitHub Page:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\update-pages.ps1
+git add .
+git commit -m "Update GitHub Pages build"
+git push
+```
+
+Bei jedem Push auf `main` veroeffentlicht GitHub Actions den Inhalt aus `docs/`.
 
 Die Page ist nach erfolgreichem Workflow typischerweise unter dieser Adresse erreichbar:
 
