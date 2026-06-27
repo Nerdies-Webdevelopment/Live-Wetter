@@ -509,7 +509,7 @@ fn App() -> Element {
                     p {
                         "Live Wetter, Stadtteile, 5-Tage-Ausblick, Photovoltaik, Radar und Warnungen für ausgewählte Orte."
                     }
-                    p { class: "byline", "Von Frank Noack, Hamburg. In Zusammenarbeit mit den Wetterdaten an Bright Sky" }
+                    p { class: "byline", "Von Frank Noack, Hamburg. In Zusammenarbeit mit den Wetterdaten von Bright Sky" }
                     div { class: "hero-actions",
                         span { class: "pill live-clock", "Live Uhrzeit {live_time_text}" }
                         span { class: "pill", "Zeitzone: Europe/Berlin" }
