@@ -3,8 +3,9 @@
   "short_name": "Live Wetter",
   "description": "Live Wetter, Stadtteile, 5-Tage-Ausblick, Photovoltaik, Radar und Warnungen fuer ausgewaehlte Orte.",
   "lang": "de-DE",
-  "start_url": ".",
-  "scope": ".",
+  "id": "/Live-Wetter/",
+  "start_url": "/Live-Wetter/",
+  "scope": "/Live-Wetter/",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#eef3f0",
@@ -12,19 +13,19 @@
   "categories": ["weather", "utilities"],
   "icons": [
     {
-      "src": "favicon.ico",
+      "src": "/Live-Wetter/favicon.ico",
       "sizes": "16x16 24x24 32x32 48x48 64x64 128x128 256x256",
       "type": "image/x-icon",
       "purpose": "any"
     },
     {
-      "src": "pwa-icon-192.png",
+      "src": "/Live-Wetter/pwa-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "pwa-icon-512.png",
+      "src": "/Live-Wetter/pwa-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
