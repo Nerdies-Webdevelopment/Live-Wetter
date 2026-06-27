@@ -543,7 +543,7 @@ fn App() -> Element {
             }
 
             footer { class: "site-footer",
-                "Vielen Dank für die Wetterdaten an Bright Sky"
+                "Vielen Dank für die Wetterdaten von Bright Sky"
             }
         }
     }
